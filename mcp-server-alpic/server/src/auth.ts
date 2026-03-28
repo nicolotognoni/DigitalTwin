@@ -4,7 +4,8 @@ import { createClient } from "@supabase/supabase-js";
 import type { RequestHandlerExtra } from "@modelcontextprotocol/sdk/shared/protocol.js";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyExtra = RequestHandlerExtra<any, any>;
-import type { Express, Request, Response } from "express";
+import { Router, urlencoded, json, type Request, type Response } from "express";
+import type { McpServer } from "skybridge/server";
 
 // ============================================
 // Config
@@ -19,18 +20,6 @@ const BASE_URL = process.env.MCP_SERVER_URL || "http://localhost:3000";
 interface Auth {
   readonly userId: string;
   readonly accessToken: string;
-}
-
-export function getAuth(extra: AnyExtra): Auth | null {
-  const authHeader = (extra as any).requestInfo?.headers?.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
-
-  const token = authHeader.slice(7);
-  if (!token) return null;
-
-  // We can't do async validation here in a sync function,
-  // so we return the token and let withAuth handle validation.
-  return { userId: "", accessToken: token };
 }
 
 /**
@@ -160,13 +149,17 @@ function completeAuth(
 }
 
 // ============================================
-// Setup all OAuth routes on an Express app
+// Setup all OAuth routes on the McpServer
 // ============================================
-export function setupOAuthRoutes(app: Express): void {
+export function setupOAuthRoutes(server: McpServer): void {
+  const router = Router();
+  router.use(urlencoded({ extended: true }));
+  router.use(json());
+
   // ----------------------------------------
   // OAuth Discovery: Protected Resource
   // ----------------------------------------
-  app.get("/.well-known/oauth-protected-resource", (_req: Request, res: Response) => {
+  router.get("/.well-known/oauth-protected-resource", (_req: Request, res: Response) => {
     res.json({
       resource: `${BASE_URL}/mcp`,
       authorization_servers: [BASE_URL],
@@ -174,7 +167,7 @@ export function setupOAuthRoutes(app: Express): void {
     });
   });
 
-  app.get("/.well-known/oauth-protected-resource/mcp", (_req: Request, res: Response) => {
+  router.get("/.well-known/oauth-protected-resource/mcp", (_req: Request, res: Response) => {
     res.json({
       resource: `${BASE_URL}/mcp`,
       authorization_servers: [BASE_URL],
@@ -185,7 +178,7 @@ export function setupOAuthRoutes(app: Express): void {
   // ----------------------------------------
   // OAuth Discovery: Authorization Server
   // ----------------------------------------
-  app.get("/.well-known/oauth-authorization-server", (_req: Request, res: Response) => {
+  router.get("/.well-known/oauth-authorization-server", (_req: Request, res: Response) => {
     res.json({
       issuer: BASE_URL,
       authorization_endpoint: `${BASE_URL}/authorize`,
@@ -206,7 +199,7 @@ export function setupOAuthRoutes(app: Express): void {
   // ----------------------------------------
   // Dynamic Client Registration (RFC 7591)
   // ----------------------------------------
-  app.post("/register", (req: Request, res: Response) => {
+  router.post("/register", (req: Request, res: Response) => {
     const body = req.body ?? {};
     const clientId = `mcp_${crypto.randomUUID()}`;
 
@@ -225,7 +218,7 @@ export function setupOAuthRoutes(app: Express): void {
   // ----------------------------------------
   // Authorize -> Show login page
   // ----------------------------------------
-  app.get("/authorize", (req: Request, res: Response) => {
+  router.get("/authorize", (req: Request, res: Response) => {
     const {
       response_type,
       client_id,
@@ -268,7 +261,7 @@ export function setupOAuthRoutes(app: Express): void {
   // ----------------------------------------
   // Login page (HTML)
   // ----------------------------------------
-  app.get("/auth/login", (req: Request, res: Response) => {
+  router.get("/auth/login", (req: Request, res: Response) => {
     const authState = (req.query.auth_state as string) ?? "";
     const loginError = (req.query.error as string) ?? "";
 
@@ -337,7 +330,7 @@ export function setupOAuthRoutes(app: Express): void {
   // ----------------------------------------
   // Authenticate (form POST -> Supabase Auth)
   // ----------------------------------------
-  app.post("/auth/authenticate", async (req: Request, res: Response) => {
+  router.post("/auth/authenticate", async (req: Request, res: Response) => {
     const body = req.body ?? {};
     const email = String(body.email ?? "");
     const password = String(body.password ?? "");
@@ -405,7 +398,7 @@ export function setupOAuthRoutes(app: Express): void {
   // ----------------------------------------
   // Token endpoint (code -> access_token)
   // ----------------------------------------
-  app.post("/token", async (req: Request, res: Response) => {
+  router.post("/token", async (req: Request, res: Response) => {
     const body = req.body ?? {};
     const grant_type = String(body.grant_type ?? "");
     const code = String(body.code ?? "");
@@ -489,4 +482,7 @@ export function setupOAuthRoutes(app: Express): void {
 
     res.status(400).json({ error: "unsupported_grant_type" });
   });
+
+  // Mount all OAuth routes on the McpServer
+  server.use(router as any);
 }

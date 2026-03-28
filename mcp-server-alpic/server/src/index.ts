@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { McpServer } from "skybridge/server";
 import { z } from "zod";
-import { withAuth } from "./auth.js";
+import { withAuth, setupOAuthRoutes } from "./auth.js";
 import { createUserClient } from "./services/supabase.js";
 import {
   saveMemory,
@@ -30,8 +30,12 @@ const server = new McpServer(
     version: "1.0.0",
   },
   { capabilities: {} },
-)
+);
 
+// Mount OAuth routes (discovery, login, token exchange)
+setupOAuthRoutes(server);
+
+server
   // ============================================
   // TOOL: save-memory
   // ============================================

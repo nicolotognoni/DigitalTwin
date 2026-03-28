@@ -1,4 +1,6 @@
 import { generateHelpers } from "skybridge/web";
-import type { AppType } from "../../server/src/index.js";
 
-export const { useToolInfo, useCallTool } = generateHelpers<AppType>();
+// Type inference across packages fails with skybridge generics,
+// so we use `any` to avoid `never` constraints on widget hooks.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const { useToolInfo, useCallTool } = generateHelpers<any>();
