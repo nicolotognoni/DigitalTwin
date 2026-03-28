@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MemoryCategory } from "../types.js";
 
+// Max memories fetched from DB — the per-category cap in buildPromptFromData
+// tops out at 32 (sum of MAX_PER_CATEGORY), so 50 leaves a safe margin.
+const MAX_MEMORIES_FROM_DB = 50;
+
 const MAX_PER_CATEGORY: Record<MemoryCategory, number> = {
   identity: 3,
   skill: 5,
@@ -60,7 +64,8 @@ export async function buildAgentPrompt(
     .select("category, content, confidence, created_at")
     .eq("user_id", userId)
     .eq("is_active", true)
-    .order("confidence", { ascending: false });
+    .order("confidence", { ascending: false })
+    .limit(MAX_MEMORIES_FROM_DB);
 
   if (!memories || memories.length === 0) {
     return buildMinimalPrompt(displayName);

@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildAgentPromptFromMemories } from "./prompt-builder.js";
+import { generateEmbedding } from "./embedding.js";
 import type { AskAgentResult, AskAgentError } from "../types.js";
 import { createNotification } from "./notification-service.js";
 
@@ -36,12 +37,21 @@ export async function askAgent(
     };
   }
 
-  // 2. Get target's agent data via SECURITY DEFINER function
+  // 2. Generate query embedding from the question (+ optional context).
+  //    This single embedding drives the semantic search on the target's memories.
+  const queryText = [question, context].filter(Boolean).join("\n");
+  const queryEmbedding = await generateEmbedding(queryText);
+
+  // 3. Fetch only the most relevant memories via semantic search.
+  //    Uses the new SECURITY DEFINER RPC that runs pgvector <=> on the target's
+  //    memories and returns the top-15 closest to the query — no full-fetch.
   const { data: agentData, error: agentError } = await supabaseClient.rpc(
-    "get_connected_agent_data",
+    "get_connected_agent_memories_semantic",
     {
-      p_requester_id: requesterId,
+      p_requester_id:        requesterId,
       p_target_display_name: targetDisplayName,
+      p_query_embedding:     queryEmbedding,
+      p_match_limit:         15,
     }
   );
 

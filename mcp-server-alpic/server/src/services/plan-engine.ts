@@ -1,11 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildAgentPromptFromMemories } from "./prompt-builder.js";
+import { generateEmbedding } from "./embedding.js";
 import { getSpecialistAgent, SPECIALIST_AGENTS } from "./specialist-agents.js";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
+
+// Cap the number of agents per plan to prevent token explosion in synthesizePlan.
+// Each agent contribution is up to 1000 tokens; synthesis receives all of them
+// as input context. 5 agents ≈ 5 000 tokens — already rich enough for any plan.
+const MAX_AGENTS = 5;
 
 interface AgentContribution {
   readonly agentId: string;
@@ -30,23 +36,40 @@ interface FriendAgentInfo {
 
 /**
  * Fetch a friend's agent data for collaborative planning.
+ * Uses semantic search when a queryEmbedding is provided (preferred),
+ * falling back to the full-fetch RPC when it is not.
  */
 async function fetchFriendAgent(
   supabase: SupabaseClient,
   requesterId: string,
-  targetDisplayName: string
+  targetDisplayName: string,
+  queryEmbedding?: number[]
 ): Promise<FriendAgentInfo | null> {
-  const { data, error } = await supabase.rpc("get_connected_agent_data", {
-    p_requester_id: requesterId,
-    p_target_display_name: targetDisplayName,
-  });
+  let data: Record<string, unknown> | null = null;
+  let error: unknown = null;
 
-  if (error || data?.error) return null;
+  if (queryEmbedding) {
+    // Semantic path: only top-15 memories relevant to the plan description.
+    ({ data, error } = await supabase.rpc("get_connected_agent_memories_semantic", {
+      p_requester_id:        requesterId,
+      p_target_display_name: targetDisplayName,
+      p_query_embedding:     queryEmbedding,
+      p_match_limit:         15,
+    }));
+  } else {
+    // Legacy fallback: full-fetch (no embedding available).
+    ({ data, error } = await supabase.rpc("get_connected_agent_data", {
+      p_requester_id:        requesterId,
+      p_target_display_name: targetDisplayName,
+    }));
+  }
+
+  if (error || (data as any)?.error) return null;
 
   return {
-    displayName: data.target_display_name,
-    memories: data.memories ?? [],
-    memoryCount: data.memory_count ?? 0,
+    displayName:  (data as any).target_display_name,
+    memories:     (data as any).memories ?? [],
+    memoryCount:  (data as any).memory_count ?? 0,
   };
 }
 
@@ -196,7 +219,8 @@ export async function listAvailableAgents(
 async function resolveAgentTask(
   supabase: SupabaseClient,
   userId: string,
-  agentId: string
+  agentId: string,
+  queryEmbedding?: number[]
 ): Promise<{
   agentId: string;
   agentName: string;
@@ -206,7 +230,7 @@ async function resolveAgentTask(
 } | null> {
   if (agentId.startsWith("friend:")) {
     const displayName = agentId.replace("friend:", "");
-    const friendData = await fetchFriendAgent(supabase, userId, displayName);
+    const friendData = await fetchFriendAgent(supabase, userId, displayName, queryEmbedding);
 
     if (!friendData || friendData.memoryCount < 3) {
       return {
@@ -257,9 +281,18 @@ export async function createCollaborativePlan(
   agentIds: readonly string[],
   context?: string
 ): Promise<CollaborativePlanResult> {
+  // Enforce agent cap to keep synthesis prompt size predictable.
+  const limitedAgentIds = agentIds.slice(0, MAX_AGENTS);
+
+  // Generate a single query embedding from the plan description (+ context).
+  // This is shared across all friend-agent semantic searches, so we only
+  // pay for one OpenAI API call regardless of how many friends are selected.
+  const queryText = [planDescription, context].filter(Boolean).join("\n");
+  const queryEmbedding = await generateEmbedding(queryText);
+
   // Phase 1: Resolve all agent tasks (fetch friend data, etc.)
   const tasks = await Promise.all(
-    agentIds.map((id) => resolveAgentTask(supabase, userId, id))
+    limitedAgentIds.map((id) => resolveAgentTask(supabase, userId, id, queryEmbedding))
   );
 
   // Phase 2: Call Claude in parallel for all agents with valid prompts
