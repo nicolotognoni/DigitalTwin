@@ -1,0 +1,153 @@
+/* CSS Reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Font setup */
+:root {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Light theme (default) */
+:root {
+  --text-primary: #111;
+  --text-secondary: #666;
+  --bg-primary: #fff;
+  --bg-secondary: #fafafa;
+  --bg-card: #fff;
+  --border-color: #e0e0e0;
+  --border-selected: #111;
+  --checkbox-bg: #111;
+  --badge-bg: #f0f0f0;
+  --input-border: #ddd;
+  --btn-bg: #111;
+  --loading-bg: #f0f7ff;
+  --plan-bg: #f8f8f0;
+  --plan-border: #e8e8d8;
+  --empty-color: #999;
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+  --text-primary: #eee;
+  --text-secondary: #aaa;
+  --bg-primary: #1e1e1e;
+  --bg-secondary: #2a2a2a;
+  --bg-card: #2a2a2a;
+  --border-color: #444;
+  --border-selected: #6ea8fe;
+  --checkbox-bg: #6ea8fe;
+  --badge-bg: #333;
+  --input-border: #555;
+  --btn-bg: #6ea8fe;
+  --loading-bg: #1a2a3a;
+  --plan-bg: #2a2a20;
+  --plan-border: #444;
+  --empty-color: #777;
+}
+
+/* Fallback for prefers-color-scheme when no data-theme set */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --text-primary: #eee;
+    --text-secondary: #aaa;
+    --bg-primary: #1e1e1e;
+    --bg-secondary: #2a2a2a;
+    --bg-card: #2a2a2a;
+    --border-color: #444;
+    --border-selected: #6ea8fe;
+    --checkbox-bg: #6ea8fe;
+    --badge-bg: #333;
+    --input-border: #555;
+    --btn-bg: #6ea8fe;
+    --loading-bg: #1a2a3a;
+    --plan-bg: #2a2a20;
+    --plan-border: #444;
+    --empty-color: #777;
+  }
+}
+
+/* Keyframes */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Markdown content styles */
+.md-content h1,
+.md-content h2,
+.md-content h3,
+.md-content h4 {
+  margin: 12px 0 6px;
+  color: var(--text-primary);
+}
+
+.md-content h2 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.md-content h3 {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.md-content h4 {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.md-content p {
+  margin: 4px 0;
+  line-height: 1.5;
+}
+
+.md-content ul {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.md-content li {
+  margin: 2px 0;
+  line-height: 1.5;
+}
+
+.md-content strong {
+  font-weight: 600;
+}
+
+.md-content pre {
+  background: var(--badge-bg);
+  border-radius: 6px;
+  padding: 10px;
+  overflow-x: auto;
+  font-size: 12px;
+  margin: 8px 0;
+}
+
+.md-content code {
+  font-family: "SF Mono", Menlo, monospace;
+  font-size: 12px;
+}
+
+.md-content .inline-code {
+  background: var(--badge-bg);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.md-content hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 12px 0;
+}

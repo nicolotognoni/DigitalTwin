@@ -1,0 +1,44 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# next.js
+webapp/.next/
+webapp/out/
+
+# build
+mcp-server/dist/
+mcp-server/.mcp-use/
+mcp-server-alpic/dist/
+mcp-server-alpic/web/dist/
+mcp-server-alpic/node_modules/
+
+# env & secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# AI assistant tooling
+.claude/
+CLAUDE.md
+.agent/
+.cursor/
+
+# debug
+npm-debug.log*
+
+# misc
+.DS_Store
+TODO.md
+
+# typescript
+*.tsbuildinfo
+
+# IDE
+.vscode/
+.idea/
+
+# deprecated
+mcp-server-old/
