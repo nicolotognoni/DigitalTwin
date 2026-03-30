@@ -43,7 +43,7 @@ export async function saveMemory(
       user_id: userId,
       content: input.content,
       category: input.category,
-      source: "chatgpt",
+      source: input.source ?? "chatgpt",
       embedding,
       metadata: input.metadata ?? {},
     })
@@ -96,7 +96,8 @@ interface ExtractedMemory {
 export async function extractAllMemories(
   supabase: SupabaseClient,
   userId: string,
-  extractionData: string
+  extractionData: string,
+  source?: SaveMemoryInput["source"]
 ): Promise<{ memories_created: number; memories_deduplicated: number }> {
   let parsed: readonly ExtractedMemory[];
 
@@ -116,6 +117,7 @@ export async function extractAllMemories(
     const result = await saveMemory(supabase, userId, {
       content: item.content,
       category: item.category as SaveMemoryInput["category"],
+      source,
     });
 
     if (result.status === "created") created++;

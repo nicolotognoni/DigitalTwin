@@ -19,6 +19,7 @@ export type MemorySource =
 export interface SaveMemoryInput {
   readonly content: string;
   readonly category: MemoryCategory;
+  readonly source?: MemorySource;
   readonly metadata?: Record<string, unknown>;
 }
 

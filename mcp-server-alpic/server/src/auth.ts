@@ -20,6 +20,7 @@ const BASE_URL = process.env.MCP_SERVER_URL || "http://localhost:3000";
 interface Auth {
   readonly userId: string;
   readonly accessToken: string;
+  readonly clientSource: "chatgpt" | "claude" | "manual";
 }
 
 /**
@@ -70,7 +71,12 @@ export function withAuth<TInput>(
       };
     }
 
-    return handler(input, { userId: data.user.id, accessToken: token });
+    const userAgent = ((extra as any).requestInfo?.headers?.["user-agent"] ?? "").toLowerCase();
+    const clientSource = userAgent.includes("claude") ? "claude" as const
+      : userAgent.includes("chatgpt") || userAgent.includes("openai") ? "chatgpt" as const
+      : "manual" as const;
+
+    return handler(input, { userId: data.user.id, accessToken: token, clientSource });
   };
 }
 
@@ -295,7 +301,7 @@ export function setupOAuthRoutes(server: McpServer): void {
 <body>
   <div class="card">
     <h1>Digital Twin</h1>
-    <p class="sub">Accedi per collegare il tuo Digital Twin a ChatGPT</p>
+    <p class="sub">Accedi per collegare il tuo Digital Twin</p>
     ${loginError ? `<p class="err">${loginError}</p>` : ""}
     <form method="POST" action="${BASE_URL}/auth/authenticate">
       <input type="hidden" name="auth_state" value="${authState}">
@@ -445,13 +451,16 @@ export function setupOAuthRoutes(server: McpServer): void {
 
       authCodes.delete(code);
 
-      res.json({
+      const tokenResponse: Record<string, unknown> = {
         access_token: stored.supabaseAccessToken,
         token_type: "Bearer",
         expires_in: 3600,
-        refresh_token: stored.supabaseRefreshToken,
         scope: "openid profile email",
-      });
+      };
+      if (stored.supabaseRefreshToken) {
+        tokenResponse.refresh_token = stored.supabaseRefreshToken;
+      }
+      res.json(tokenResponse);
       return;
     }
 

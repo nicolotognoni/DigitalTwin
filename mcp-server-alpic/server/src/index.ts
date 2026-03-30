@@ -22,6 +22,31 @@ import {
 import { checkAvailability } from "./services/calendar-service.js";
 
 // ============================================
+// Response helpers (match mcp-use format)
+// ============================================
+function object<T>(data: T) {
+  return {
+    content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
+    structuredContent: data,
+    _meta: { mimeType: "application/json" },
+  };
+}
+
+function text(content: string) {
+  return {
+    content: [{ type: "text" as const, text: content }],
+    _meta: { mimeType: "text/plain" },
+  };
+}
+
+function mcpError(message: string) {
+  return {
+    isError: true as const,
+    content: [{ type: "text" as const, text: message }],
+  };
+}
+
+// ============================================
 // Server
 // ============================================
 const server = new McpServer(
@@ -73,21 +98,19 @@ server
           ),
       },
     },
-    withAuth(async ({ content, category, metadata }, { userId, accessToken }) => {
+    withAuth(async ({ content, category, metadata }, { userId, accessToken, clientSource }) => {
       try {
         const supabase = createUserClient(accessToken);
         const parsedMetadata = metadata ? JSON.parse(metadata) : undefined;
         const result = await saveMemory(supabase, userId, {
           content,
           category,
+          source: clientSource,
           metadata: parsedMetadata,
         });
-        return { structuredContent: result, content: [] };
+        return object(result);
       } catch (err) {
-        return {
-          content: [{ type: "text", text: `Errore nel salvataggio: ${String(err)}` }],
-          isError: true,
-        };
+        return mcpError(`Errore nel salvataggio: ${String(err)}`);
       }
     }),
   )
@@ -119,12 +142,9 @@ server
       try {
         const supabase = createUserClient(accessToken);
         const results = await searchMemories(supabase, userId, query, category, limit);
-        return { structuredContent: { results, count: results.length }, content: [] };
+        return object({ results, count: results.length });
       } catch (err) {
-        return {
-          content: [{ type: "text", text: `Errore nella ricerca: ${String(err)}` }],
-          isError: true,
-        };
+        return mcpError(`Errore nella ricerca: ${String(err)}`);
       }
     }),
   )
@@ -145,22 +165,13 @@ server
           ),
       },
     },
-    withAuth(async ({ extraction_prompt }, { userId, accessToken }) => {
+    withAuth(async ({ extraction_prompt }, { userId, accessToken, clientSource }) => {
       try {
         const supabase = createUserClient(accessToken);
-        const result = await extractAllMemories(supabase, userId, extraction_prompt);
-        return {
-          structuredContent: {
-            ...result,
-            message: `Importate ${result.memories_created} nuove memorie. ${result.memories_deduplicated} duplicate ignorate.`,
-          },
-          content: [],
-        };
+        const result = await extractAllMemories(supabase, userId, extraction_prompt, clientSource);
+        return object(result);
       } catch (err) {
-        return {
-          content: [{ type: "text", text: `Errore nell'estrazione: ${String(err)}` }],
-          isError: true,
-        };
+        return mcpError(`Errore nell'estrazione: ${String(err)}`);
       }
     }),
   )
@@ -207,12 +218,9 @@ server
             question,
             context,
           );
-          return { structuredContent: result, content: [] };
+          return object(result);
         } catch (err) {
-          return {
-            content: [{ type: "text", text: `Errore nell'interazione: ${String(err)}` }],
-            isError: true,
-          };
+          return mcpError(`Errore nell'interazione: ${String(err)}`);
         }
       },
     ),
@@ -256,21 +264,15 @@ server
           categories[m.category] = (categories[m.category] ?? 0) + 1;
         }
 
-        return {
-          structuredContent: {
-            display_name: agent?.display_name ?? "Unknown",
-            memory_count: agent?.memory_count ?? 0,
-            connections_count: connCount ?? 0,
-            categories,
-            status: agent?.status ?? "unknown",
-          },
-          content: [],
-        };
+        return object({
+          display_name: agent?.display_name ?? "Unknown",
+          memory_count: agent?.memory_count ?? 0,
+          connections_count: connCount ?? 0,
+          categories,
+          status: agent?.status ?? "unknown",
+        });
       } catch (err) {
-        return {
-          content: [{ type: "text", text: `Errore nello stato: ${String(err)}` }],
-          isError: true,
-        };
+        return mcpError(`Errore nello stato: ${String(err)}`);
       }
     }),
   )
@@ -290,26 +292,9 @@ server
       try {
         const supabase = createUserClient(accessToken);
         const result = await listAvailableAgents(supabase, userId);
-        return {
-          structuredContent: result,
-          content: [
-            {
-              type: "text",
-              text:
-                `Available agents: ${result.builtin_agents.map((a: { icon: string; name: string }) => `${a.icon} ${a.name}`).join(", ")}` +
-                (result.friend_agents.length > 0
-                  ? `. Friends: ${result.friend_agents.map((a: { name: string }) => a.name).join(", ")}`
-                  : ""),
-            },
-          ],
-        };
+        return object(result);
       } catch (err) {
-        return {
-          content: [
-            { type: "text", text: `Errore nel recupero agenti: ${String(err)}` },
-          ],
-          isError: true,
-        };
+        return mcpError(`Errore nel recupero agenti: ${String(err)}`);
       }
     }),
   )
@@ -372,24 +357,13 @@ server
             plan_description,
           );
 
-          return {
-            structuredContent: {
-              ...result,
-              saved_plan_id: saved.plan_id,
-              saved_name: saved.name,
-            },
-            content: [],
-          };
+          return object({
+            ...result,
+            saved_plan_id: saved.plan_id,
+            saved_name: saved.name,
+          });
         } catch (err) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Errore nella creazione del piano: ${String(err)}`,
-              },
-            ],
-            isError: true,
-          };
+          return mcpError(`Errore nella creazione del piano: ${String(err)}`);
         }
       },
     ),
@@ -416,21 +390,11 @@ server
         const supabase = createUserClient(accessToken);
         const plan = await getPlan(supabase, userId, search);
         if (!plan) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: "Nessun piano trovato con quel nome. Prova con 'i miei piani' per vedere tutti i piani salvati.",
-              },
-            ],
-          };
+          return text("Nessun piano trovato con quel nome. Prova con 'i miei piani' per vedere tutti i piani salvati.");
         }
-        return { structuredContent: plan, content: [] };
+        return object(plan);
       } catch (err) {
-        return {
-          content: [{ type: "text", text: `Errore ricerca piano: ${String(err)}` }],
-          isError: true,
-        };
+        return mcpError(`Errore ricerca piano: ${String(err)}`);
       }
     }),
   )
@@ -450,21 +414,11 @@ server
         const supabase = createUserClient(accessToken);
         const plans = await listPlans(supabase, userId);
         if (plans.length === 0) {
-          return {
-            content: [
-              {
-                type: "text",
-                text: "Non hai ancora nessun piano salvato. Crea un piano con il team di agenti!",
-              },
-            ],
-          };
+          return text("Non hai ancora nessun piano salvato. Crea un piano con il team di agenti!");
         }
-        return { structuredContent: { plans, count: plans.length }, content: [] };
+        return object({ plans, count: plans.length });
       } catch (err) {
-        return {
-          content: [{ type: "text", text: `Errore lista piani: ${String(err)}` }],
-          isError: true,
-        };
+        return mcpError(`Errore lista piani: ${String(err)}`);
       }
     }),
   )
@@ -496,22 +450,9 @@ server
           await markAllRead(supabase, userId);
         }
 
-        const summaryText =
-          notifications.length === 0
-            ? "Nessuna notifica! Tutto tranquillo."
-            : `Hai ${notifications.length} notific${notifications.length === 1 ? "a" : "he"} non lett${notifications.length === 1 ? "a" : "e"}.`;
-
-        return {
-          structuredContent: { notifications },
-          content: [{ type: "text", text: summaryText }],
-        };
+        return object({ notifications });
       } catch (err) {
-        return {
-          content: [
-            { type: "text", text: `Errore lettura notifiche: ${String(err)}` },
-          ],
-          isError: true,
-        };
+        return mcpError(`Errore lettura notifiche: ${String(err)}`);
       }
     }),
   )
@@ -554,14 +495,7 @@ server
             .single();
 
           if (!targetUser) {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: `Utente "${target_display_name}" non trovato.`,
-                },
-              ],
-            };
+            return text(`Utente "${target_display_name}" non trovato.`);
           }
 
           // Check connection
@@ -575,14 +509,7 @@ server
             .single();
 
           if (!connection) {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: `Non sei connesso con ${target_display_name}. Invia prima una richiesta di connessione.`,
-                },
-              ],
-            };
+            return text(`Non sei connesso con ${target_display_name}. Invia prima una richiesta di connessione.`);
           }
 
           // Parse time range
@@ -617,45 +544,19 @@ server
           );
 
           if (!result.hasCalendar) {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: `${target_display_name} non ha collegato Google Calendar. Non posso verificare la disponibilità.`,
-                },
-              ],
-            };
+            return text(`${target_display_name} non ha collegato Google Calendar. Non posso verificare la disponibilità.`);
           }
 
-          const busyDetails =
-            result.busySlots.length > 0
-              ? result.busySlots
-                  .map(
-                    (s: { start: string; end: string }) =>
-                      `- Occupato: ${new Date(s.start).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })} - ${new Date(s.end).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}`,
-                  )
-                  .join("\n")
-              : "";
-
-          return {
-            structuredContent: {
-              target_name: target_display_name,
-              date,
-              time_range: time_range ?? "giornata intera",
-              available: result.busySlots.length === 0,
-              busy_slots: result.busySlots,
-              summary: result.freeMessage,
-              details: busyDetails,
-            },
-            content: [],
-          };
+          return object({
+            target_name: target_display_name,
+            date,
+            time_range: time_range ?? "giornata intera",
+            available: result.busySlots.length === 0,
+            busy_slots: result.busySlots,
+            summary: result.freeMessage,
+          });
         } catch (err) {
-          return {
-            content: [
-              { type: "text", text: `Errore check disponibilità: ${String(err)}` },
-            ],
-            isError: true,
-          };
+          return mcpError(`Errore check disponibilità: ${String(err)}`);
         }
       },
     ),
@@ -704,14 +605,7 @@ server
             .single();
 
           if (!targetUser) {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: `Utente "${target_display_name}" non trovato.`,
-                },
-              ],
-            };
+            return text(`Utente "${target_display_name}" non trovato.`);
           }
 
           // Get requester display name
@@ -735,15 +629,7 @@ server
             .single();
 
           if (calError) {
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: `Errore creazione richiesta: ${calError.message}`,
-                },
-              ],
-              isError: true,
-            };
+            return mcpError(`Errore creazione richiesta: ${calError.message}`);
           }
 
           // Create notification for target
@@ -762,25 +648,69 @@ server
             },
           );
 
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Richiesta di meeting inviata a ${target_display_name}! Ti ha proposto un incontro il ${new Date(proposed_time).toLocaleDateString("it-IT")} alle ${new Date(proposed_time).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })} per ${duration_minutes} minuti. ${target_display_name} riceverà una notifica.`,
-              },
-            ],
-          };
+          return text(
+            `Richiesta di meeting inviata a ${target_display_name}! Meeting proposto il ${new Date(proposed_time).toLocaleDateString("it-IT")} alle ${new Date(proposed_time).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })} per ${duration_minutes} minuti. ${target_display_name} riceverà una notifica.`
+          );
         } catch (err) {
-          return {
-            content: [
-              { type: "text", text: `Errore richiesta meeting: ${String(err)}` },
-            ],
-            isError: true,
-          };
+          return mcpError(`Errore richiesta meeting: ${String(err)}`);
         }
       },
     ),
   );
+
+// ============================================
+// TOOL: list-agents (tool version of agent-selector widget)
+// ============================================
+server.registerTool(
+  "list-agents",
+  {
+    description:
+      "List all available agents for collaborative planning. Returns specialist agents (Frontend, Backend, Security, DevOps, UX, PM, Data, Mobile) and connected friends' Digital Twins. Use this when the user asks 'show me the agents', 'which agents can I use?', 'who can help me plan?', 'build a team', or wants to create a collaborative plan.",
+    inputSchema: {},
+  },
+  withAuth(async (_input, { userId, accessToken }) => {
+    try {
+      const supabase = createUserClient(accessToken);
+      const result = await listAvailableAgents(supabase, userId);
+      return object(result);
+    } catch (err) {
+      return mcpError(`Errore nel recupero agenti: ${String(err)}`);
+    }
+  }),
+);
+
+// ============================================
+// TOOL: get-notifications (tool version of notifications widget)
+// ============================================
+server.registerTool(
+  "get-notifications",
+  {
+    description:
+      "Get unread notifications for the user. Use when the user says 'novita?', 'notifiche?', 'news?', 'ci sono novita?', 'qualcosa di nuovo?', 'che succede?', or any variation asking about news or notifications.",
+    inputSchema: {
+      mark_as_read: z
+        .boolean()
+        .default(false)
+        .describe(
+          "If true, mark all returned notifications as read after showing them",
+        ),
+    },
+  },
+  withAuth(async ({ mark_as_read }, { userId, accessToken }) => {
+    try {
+      const supabase = createUserClient(accessToken);
+      const notifications = await getUnreadNotifications(supabase, userId);
+
+      if (mark_as_read && notifications.length > 0) {
+        await markAllRead(supabase, userId);
+      }
+
+      return object({ notifications });
+    } catch (err) {
+      return mcpError(`Errore lettura notifiche: ${String(err)}`);
+    }
+  }),
+);
 
 // ============================================
 // Start server
