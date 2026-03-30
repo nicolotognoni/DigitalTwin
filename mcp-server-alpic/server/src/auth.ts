@@ -12,7 +12,7 @@ import type { McpServer } from "skybridge/server";
 // ============================================
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY!;
-const BASE_URL = process.env.MCP_SERVER_URL || "http://localhost:3000";
+const BASE_URL = process.env.MCP_SERVER_URL || "http://localhost:3001";
 
 // ============================================
 // Auth helpers for MCP tool handlers

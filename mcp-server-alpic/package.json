@@ -5,7 +5,8 @@
   "description": "Digital Twin MCP Server — gemello digitale cognitivo per ChatGPT",
   "type": "module",
   "scripts": {
-    "dev": "skybridge dev",
+    "dev": "skybridge dev --port 3001",
+    "tunnel": "alpic tunnel --port 3001",
     "build": "skybridge build",
     "start": "skybridge start",
     "deploy": "alpic deploy"
