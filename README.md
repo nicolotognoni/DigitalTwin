@@ -123,7 +123,7 @@ users ─────────── agents (1:1, auto-created)
 - **Supabase** project — [supabase.com](https://supabase.com)
 - **OpenAI API key** — for ada-002 embeddings
 - **Anthropic API key** — for agent engine (Claude)
-- **cloudflared** — `brew install cloudflared` (tunnel to ChatGPT)
+- **Alpic CLI** — `npm install -g alpic` (tunnel + deploy)
 - **Google Cloud credentials** — optional, for calendar integration
 
 ### 1. Clone & Install
@@ -157,7 +157,7 @@ cp webapp/.env.example webapp/.env.local
 | `ANTHROPIC_API_KEY` | Yes | Anthropic API key for Claude |
 | `OPENAI_API_KEY` | Yes | OpenAI API key for embeddings |
 | `PORT` | No | Server port (default: `3001`) |
-| `MCP_SERVER_URL` | Yes | Public URL (Cloudflare tunnel URL) |
+| `MCP_SERVER_URL` | Yes | Public URL (Alpic tunnel URL) |
 
 </details>
 
@@ -186,8 +186,8 @@ Then enable:
 # Terminal 1 — Webapp
 cd webapp && npm run dev                          # http://localhost:3000
 
-# Terminal 2 — Tunnel
-cloudflared tunnel --url http://localhost:3001     # Copy the public URL
+# Terminal 2 — Tunnel (Alpic CLI)
+cd mcp-server-alpic && alpic tunnel --port 3001    # Copy the public URL
 
 # Terminal 3 — MCP Server (set MCP_SERVER_URL in .env first)
 cd mcp-server-alpic && npm run dev                # http://localhost:3001
