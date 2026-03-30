@@ -29,6 +29,12 @@
 
 ---
 
+## Demo
+
+https://github.com/user-attachments/assets/387ea66f-42a8-429b-a31e-bd804cc13932
+
+---
+
 ## What is Digital Twin?
 
 Every user creates a **Digital Twin** — a personal AI agent that stores all your preferences, skills, opinions, and knowledge in a **centralized memory layer**. Your Twin is yours: it lives in a shared database, which means you can access your memories and plans from **any AI client** — create a plan on ChatGPT, then pull it up in Claude Code, or query it from your own app.
