@@ -5,8 +5,11 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Digital Twin",
+  title: "DigitalTwin",
   description: "Your personal AI agent, powered by your conversations",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

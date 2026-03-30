@@ -59,7 +59,7 @@ export function Sidebar({ displayName, unreadCount }: SidebarProps) {
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-foreground text-background">
           <Zap size={18} />
         </div>
-        <span className="text-lg font-bold tracking-tight">Digital Twin</span>
+        <span className="text-lg font-bold tracking-tight">DigitalTwin</span>
         <span className="ml-1 rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
           Beta
         </span>

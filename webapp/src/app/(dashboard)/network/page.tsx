@@ -25,7 +25,12 @@ export default function NetworkPage() {
     "/api/connections",
     fetcher
   );
+  const { data: meData } = useSWR<{ user: { id: string } }>(
+    "/api/auth/me",
+    fetcher
+  );
   const connections: readonly ConnectionData[] = data?.data ?? [];
+  const currentUserId = meData?.user?.id;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<readonly UserResult[]>([]);
@@ -133,7 +138,7 @@ export default function NetworkPage() {
         ) : (
           acceptedConnections.map((conn) => {
             const otherUser =
-              conn.requester.id === conn.requester_id
+              conn.requester_id === currentUserId
                 ? conn.receiver
                 : conn.requester;
             return (
