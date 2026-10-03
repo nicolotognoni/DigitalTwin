@@ -279,3 +279,7 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
   Built with Claude API, Supabase, Next.js & Alpic<br/>
   <sub>Made by <a href="https://github.com/nicolotognoni">Nicolo Tognoni</a></sub>
 </p>
+
+## Project case study
+
+For the architecture, implementation context and outcomes, see the [project case study](https://nicolotognoni.com/projects/digital-twin).
